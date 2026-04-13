@@ -2,22 +2,20 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import re
+import altair as alt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 
 st.title("Recipe Recommendation System")
-st.write("Select a category and a dish from Book 3 to get the top 3 recommendations.")
+st.write("Choose a category and a dish to see the top 3 recommendations.")
 
+# -----------------------------
 # Load data
+# -----------------------------
 @st.cache_data
 def load_data():
-    book3 = pd.read_excel("Book3.xlsx")
     recipes = pd.read_csv("recipes.csv")
-
-    book3.columns = ["recipe_name", "category"]
-    book3["category"] = book3["category"].astype(str).str.lower().str.strip()
-    book3["recipe_name"] = book3["recipe_name"].astype(str).str.strip()
 
     recipes["category"] = recipes["category"].astype(str).str.lower().str.strip()
     recipes["recipe_name"] = recipes["recipe_name"].astype(str).str.strip()
@@ -26,11 +24,13 @@ def load_data():
     for col in ["thumbs_up", "best_score", "reply_count", "stars"]:
         recipes[col] = pd.to_numeric(recipes[col], errors="coerce").fillna(0)
 
-    return book3, recipes
+    return recipes
 
-book3, recipes = load_data()
+recipes = load_data()
 
+# -----------------------------
 # Build metadata
+# -----------------------------
 recipe_meta = recipes[["recipe_code", "recipe_name", "category"]].drop_duplicates()
 
 GENERIC_WORDS = [
@@ -171,16 +171,39 @@ def recommend(recipe_code, n=3):
     top_n["match_type"] = top_n.apply(tag, axis=1)
     return top_n[["recipe_name", "category", "match_type", "similarity_score"]]
 
-# Dropdown 1
-categories = sorted(book3["category"].dropna().unique())
-selected_category = st.selectbox("Pick a category", categories)
+# -----------------------------
+# Dropdown 1: category from recipes.csv
+# -----------------------------
+category_options = ["Select a category"] + sorted(recipe_meta["category"].dropna().unique().tolist())
+selected_category = st.selectbox("Pick a category", category_options, index=0)
 
-# Dropdown 2
-filtered = book3[book3["category"] == selected_category]
-dishes = sorted(filtered["recipe_name"].dropna().unique())
-selected_dish = st.selectbox("Pick a dish from Book 3", dishes)
+# -----------------------------
+# Dropdown 2: dish from recipes.csv
+# -----------------------------
+selected_dish = None
 
+if selected_category != "Select a category":
+    filtered_dishes = (
+        recipe_meta[recipe_meta["category"] == selected_category]["recipe_name"]
+        .dropna()
+        .drop_duplicates()
+        .sort_values()
+        .tolist()
+    )
+    dish_options = ["Select a dish"] + filtered_dishes
+    selected_dish = st.selectbox("Pick a dish", dish_options, index=0)
+else:
+    st.selectbox("Pick a dish", ["Select a category first"], index=0, disabled=True)
+
+# -----------------------------
+# Show nothing until both are selected
+# -----------------------------
+if selected_category == "Select a category" or selected_dish in [None, "Select a dish"]:
+    st.stop()
+
+# -----------------------------
 # Match selected dish to recipe_code
+# -----------------------------
 matches = recipe_meta[
     (recipe_meta["recipe_name"].str.lower() == selected_dish.lower().strip()) &
     (recipe_meta["category"] == selected_category)
@@ -188,14 +211,35 @@ matches = recipe_meta[
 
 if matches.empty:
     st.warning("This dish was not found in the main recipes dataset.")
-else:
-    selected_code = matches.iloc[0]["recipe_code"]
-    recs = recommend(selected_code, n=3)
+    st.stop()
 
-    st.subheader(f"Top 3 recommendations for {selected_dish}")
+selected_code = matches.iloc[0]["recipe_code"]
+recs = recommend(selected_code, n=3)
 
-    if recs.empty:
-        st.warning("No recommendations found.")
-    else:
-        st.dataframe(recs, use_container_width=True)
-        st.bar_chart(recs.set_index("recipe_name")["similarity_score"])
+if recs.empty:
+    st.warning("No recommendations found.")
+    st.stop()
+
+st.subheader(f"Top 3 recommendations for {selected_dish}")
+st.write(
+    "These recommendations are based on a hybrid model that combines text similarity, "
+    "category similarity, and engagement."
+)
+
+st.dataframe(recs, use_container_width=True)
+
+# -----------------------------
+# Fixed-axis chart: 0 to 1
+# -----------------------------
+chart = (
+    alt.Chart(recs)
+    .mark_bar()
+    .encode(
+        x=alt.X("recipe_name:N", sort="-y", title="Recommended Recipe"),
+        y=alt.Y("similarity_score:Q", scale=alt.Scale(domain=[0, 1]), title="Similarity Score"),
+        tooltip=["recipe_name", "category", "match_type", "similarity_score"]
+    )
+    .properties(height=350)
+)
+
+st.altair_chart(chart, use_container_width=True)
