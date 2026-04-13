@@ -17,4 +17,4 @@ st.write("Explain your method here later.")
 st.header("Results Preview")
 st.write("Briefly summarize your findings here.")
 
-st.info("Go to the Results page from the sidebar (we will add it next).")
+st.info("Go to the Results page from the sidebar")
