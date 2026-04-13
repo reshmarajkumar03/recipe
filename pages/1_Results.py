@@ -8,17 +8,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 
 st.title("🍽️ Recipe Recommendation System")
-st.write(
-    "Select a category and a dish to generate the top 3 recipe recommendations."
-)
+st.write("Select a category and a dish to see the top 3 recommendations.")
 
-# -----------------------------
-# Load data
-# -----------------------------
 @st.cache_data
 def load_data():
     recipes = pd.read_csv("recipes.csv")
-
     recipes["category"] = recipes["category"].astype(str).str.lower().str.strip()
     recipes["recipe_name"] = recipes["recipe_name"].astype(str).str.strip()
     recipes["text"] = recipes["text"].fillna("")
@@ -31,9 +25,6 @@ def load_data():
 recipes = load_data()
 recipe_meta = recipes[["recipe_code", "recipe_name", "category"]].drop_duplicates()
 
-# -----------------------------
-# Helper settings
-# -----------------------------
 GENERIC_WORDS = [
     "recipe", "make", "made", "use", "used", "great", "good", "delicious",
     "easy", "really", "just", "like", "love", "loved", "time", "way",
@@ -68,9 +59,6 @@ def clean_text(text):
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-# -----------------------------
-# Build recommender
-# -----------------------------
 @st.cache_data
 def build_recommender(df, recipe_meta_df):
     recipe_text = (
@@ -151,9 +139,6 @@ def build_recommender(df, recipe_meta_df):
 
 hybrid_sim = build_recommender(recipes, recipe_meta)
 
-# -----------------------------
-# Recommendation function
-# -----------------------------
 def recommend(recipe_code, n=3):
     if recipe_code not in hybrid_sim.index:
         return pd.DataFrame()
@@ -178,9 +163,6 @@ def recommend(recipe_code, n=3):
 
     return top[["recipe_name", "category", "match_type", "similarity_score"]]
 
-# -----------------------------
-# User inputs
-# -----------------------------
 category_options = ["Select a category"] + sorted(
     recipe_meta["category"].dropna().unique().tolist()
 )
@@ -201,15 +183,9 @@ if selected_category != "Select a category":
 else:
     st.selectbox("Pick a dish", ["Select a category first"], index=0, disabled=True)
 
-# -----------------------------
-# Keep page blank until selection
-# -----------------------------
 if selected_category == "Select a category" or selected_dish in [None, "Select a dish"]:
     st.stop()
 
-# -----------------------------
-# Match selected dish to recipe_code
-# -----------------------------
 match = recipe_meta[
     (recipe_meta["recipe_name"].str.lower() == selected_dish.lower().strip()) &
     (recipe_meta["category"] == selected_category)
@@ -226,56 +202,25 @@ if recs.empty:
     st.warning("No recommendations found.")
     st.stop()
 
-# -----------------------------
-# Results section
-# -----------------------------
 st.divider()
 st.subheader(f"Top 3 recommendations for {selected_dish}")
+st.caption("Recommendations are generated using a hybrid model combining text similarity, category similarity, and user engagement.")
 
-st.markdown(
-    "These recommendations come from a hybrid model that combines **text similarity**, "
-    "**category similarity**, and **engagement features**."
-)
-
-# Make scores look cleaner
 display_recs = recs.copy()
 display_recs["similarity_score"] = display_recs["similarity_score"].round(3)
 
-# Summary cards
-for i, row in display_recs.reset_index(drop=True).iterrows():
-    st.markdown(
-        f"""
-**#{i+1} {row['recipe_name']}**  
-Category: {row['category'].title()}  
-Match type: {row['match_type']}  
-Similarity score: {row['similarity_score']}
-"""
-    )
-
-st.write("")
 st.dataframe(display_recs, use_container_width=True)
 
-# -----------------------------
-# Fixed-axis chart
-# -----------------------------
 chart = (
     alt.Chart(display_recs)
-    .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
+    .mark_bar()
     .encode(
-        x=alt.X("recipe_name:N", sort="-y", title="Recommended Recipe"),
+        x=alt.X("recipe_name:N", sort="-y"),
         y=alt.Y(
             "similarity_score:Q",
-            scale=alt.Scale(domain=[0, 1]),
-            title="Similarity Score"
-        ),
-        tooltip=[
-            alt.Tooltip("recipe_name:N", title="Recipe"),
-            alt.Tooltip("category:N", title="Category"),
-            alt.Tooltip("match_type:N", title="Match Type"),
-            alt.Tooltip("similarity_score:Q", title="Score")
-        ]
+            scale=alt.Scale(domain=[0, 1])
+        )
     )
-    .properties(height=350)
 )
 
 st.altair_chart(chart, use_container_width=True)
