@@ -8,10 +8,29 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 
 st.title("Recipe Recommendation System")
-st.write("Choose a category and a dish to see the top 3 recommendations.")
 
 # -----------------------------
-# Load data
+# ICONS AT TOP
+# -----------------------------
+st.subheader("Explore Recipes")
+
+col1, col2, col3, col4, col5 = st.columns(5)
+
+with col1:
+    st.markdown("<h2 style='text-align: center;'>🍰</h2><p style='text-align: center;'>Dessert</p>", unsafe_allow_html=True)
+with col2:
+    st.markdown("<h2 style='text-align: center;'>🍝</h2><p style='text-align: center;'>Pasta</p>", unsafe_allow_html=True)
+with col3:
+    st.markdown("<h2 style='text-align: center;'>🍗</h2><p style='text-align: center;'>Chicken</p>", unsafe_allow_html=True)
+with col4:
+    st.markdown("<h2 style='text-align: center;'>🥗</h2><p style='text-align: center;'>Salad</p>", unsafe_allow_html=True)
+with col5:
+    st.markdown("<h2 style='text-align: center;'>🍲</h2><p style='text-align: center;'>Soup</p>", unsafe_allow_html=True)
+
+st.write("")
+
+# -----------------------------
+# LOAD DATA
 # -----------------------------
 @st.cache_data
 def load_data():
@@ -28,21 +47,19 @@ def load_data():
 
 recipes = load_data()
 
-# -----------------------------
-# Build metadata
-# -----------------------------
 recipe_meta = recipes[["recipe_code", "recipe_name", "category"]].drop_duplicates()
 
+# -----------------------------
+# TEXT CLEANING
+# -----------------------------
 GENERIC_WORDS = [
-    "recipe", "make", "made", "use", "used", "great", "good", "delicious",
-    "easy", "really", "just", "like", "love", "loved", "time", "way",
-    "little", "added", "add", "also", "well", "try", "tried", "family",
-    "everyone", "taste", "tasted", "tastes", "nice", "got", "did",
-    "came", "turned", "definitely", "highly", "recommend", "perfect",
-    "wonderful", "amazing", "excellent", "better", "best", "instead",
-    "sure", "want", "bit", "lot", "pretty", "think", "thought",
-    "minutes", "minute", "hour", "hours", "cup", "cups", "tablespoon",
-    "teaspoon", "oven", "pan", "bowl", "pot", "dish",
+    "recipe","make","made","use","used","great","good","delicious","easy","really","just",
+    "like","love","loved","time","way","little","added","add","also","well","try","tried",
+    "family","everyone","taste","tasted","tastes","nice","got","did","came","turned",
+    "definitely","highly","recommend","perfect","wonderful","amazing","excellent",
+    "better","best","instead","sure","want","bit","lot","pretty","think","thought",
+    "minutes","minute","hour","hours","cup","cups","tablespoon","teaspoon",
+    "oven","pan","bowl","pot","dish"
 ]
 
 RELATED_CATEGORIES = {
@@ -67,10 +84,14 @@ def clean_text(text):
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
+# -----------------------------
+# BUILD RECOMMENDER
+# -----------------------------
 @st.cache_data
-def build_recommender(recipes_df):
+def build_recommender(df):
+
     recipe_text = (
-        recipes_df.groupby("recipe_code")["text"]
+        df.groupby("recipe_code")["text"]
         .apply(lambda x: " ".join(x))
         .reset_index()
     )
@@ -79,22 +100,13 @@ def build_recommender(recipes_df):
 
     stop_words = list(TfidfVectorizer(stop_words="english").get_stop_words()) + GENERIC_WORDS
 
-    tfidf = TfidfVectorizer(
-        max_features=500,
-        ngram_range=(1, 2),
-        min_df=2,
-        stop_words=stop_words
-    )
+    tfidf = TfidfVectorizer(max_features=500, ngram_range=(1, 2), min_df=2, stop_words=stop_words)
     tfidf_matrix = tfidf.fit_transform(recipe_text["combined_text"])
 
     text_sim = cosine_similarity(tfidf_matrix)
-    text_sim_df = pd.DataFrame(
-        text_sim,
-        index=recipe_text["recipe_code"],
-        columns=recipe_text["recipe_code"]
-    )
+    text_sim_df = pd.DataFrame(text_sim, index=recipe_text["recipe_code"], columns=recipe_text["recipe_code"])
 
-    engagement = recipes_df.groupby("recipe_code").agg(
+    engagement = df.groupby("recipe_code").agg(
         avg_thumbs_up=("thumbs_up", "mean"),
         avg_best_score=("best_score", "mean"),
         avg_reply_count=("reply_count", "mean"),
@@ -107,139 +119,96 @@ def build_recommender(recipes_df):
 
     scaler = MinMaxScaler()
     engagement_scaled = scaler.fit_transform(
-        engagement[["avg_thumbs_up", "avg_best_score", "avg_reply_count", "avg_stars", "total_reviews"]]
+        engagement[["avg_thumbs_up","avg_best_score","avg_reply_count","avg_stars","total_reviews"]]
     )
 
     engagement_sim = cosine_similarity(engagement_scaled)
-    engagement_sim_df = pd.DataFrame(
-        engagement_sim,
-        index=engagement["recipe_code"],
-        columns=engagement["recipe_code"]
-    )
+    engagement_sim_df = pd.DataFrame(engagement_sim, index=engagement["recipe_code"], columns=engagement["recipe_code"])
 
-    common_recipes = text_sim_df.index.intersection(engagement_sim_df.index)
-    categories_series = (
-        recipe_meta.set_index("recipe_code")["category"]
-        .reindex(common_recipes)
-        .fillna("other")
-    )
+    common = text_sim_df.index.intersection(engagement_sim_df.index)
 
-    n = len(common_recipes)
-    cat_array = categories_series.values
+    cat_series = recipe_meta.set_index("recipe_code")["category"].reindex(common).fillna("other")
+
+    n = len(common)
     cat_matrix = np.zeros((n, n))
 
     for i in range(n):
         for j in range(n):
-            if cat_array[i] == cat_array[j]:
+            if cat_series.iloc[i] == cat_series.iloc[j]:
                 cat_matrix[i, j] = 1.0
-            elif cat_array[j] in RELATED_CATEGORIES.get(cat_array[i], []):
+            elif cat_series.iloc[j] in RELATED_CATEGORIES.get(cat_series.iloc[i], []):
                 cat_matrix[i, j] = 0.5
 
-    cat_sim_df = pd.DataFrame(cat_matrix, index=common_recipes, columns=common_recipes)
+    cat_sim_df = pd.DataFrame(cat_matrix, index=common, columns=common)
 
-    text_aligned = text_sim_df.loc[common_recipes, common_recipes]
-    eng_aligned = engagement_sim_df.loc[common_recipes, common_recipes]
-
-    hybrid_sim = (
-        0.70 * text_aligned +
+    hybrid = (
+        0.70 * text_sim_df.loc[common, common] +
         0.20 * cat_sim_df +
-        0.10 * eng_aligned
+        0.10 * engagement_sim_df.loc[common, common]
     )
 
-    return hybrid_sim
+    return hybrid
 
 hybrid_sim = build_recommender(recipes)
 
-def recommend(recipe_code, n=3):
-    if recipe_code not in hybrid_sim.index:
-        return pd.DataFrame()
-
-    scores = hybrid_sim[recipe_code].drop(index=recipe_code)
-    top_n = scores.nlargest(n).reset_index()
-    top_n.columns = ["recipe_code", "similarity_score"]
-    top_n = top_n.merge(recipe_meta, on="recipe_code", how="left")
-
-    seed_cat = recipe_meta.loc[recipe_meta["recipe_code"] == recipe_code, "category"].values[0]
-
-    def tag(row):
-        if row["category"] == seed_cat:
-            return "same"
-        elif row["category"] in RELATED_CATEGORIES.get(seed_cat, []):
-            return "related"
-        return "cross"
-
-    top_n["match_type"] = top_n.apply(tag, axis=1)
-    return top_n[["recipe_name", "category", "match_type", "similarity_score"]]
+# -----------------------------
+# RECOMMEND FUNCTION
+# -----------------------------
+def recommend(code, n=3):
+    scores = hybrid_sim[code].drop(index=code)
+    top = scores.nlargest(n).reset_index()
+    top.columns = ["recipe_code", "similarity_score"]
+    top = top.merge(recipe_meta, on="recipe_code", how="left")
+    return top[["recipe_name", "category", "similarity_score"]]
 
 # -----------------------------
-# Dropdown 1: category from recipes.csv
+# DROPDOWNS
 # -----------------------------
-category_options = ["Select a category"] + sorted(recipe_meta["category"].dropna().unique().tolist())
-selected_category = st.selectbox("Pick a category", category_options, index=0)
+category_options = ["Select a category"] + sorted(recipe_meta["category"].unique())
+selected_category = st.selectbox("Pick a category", category_options)
 
-# -----------------------------
-# Dropdown 2: dish from recipes.csv
-# -----------------------------
 selected_dish = None
 
 if selected_category != "Select a category":
-    filtered_dishes = (
-        recipe_meta[recipe_meta["category"] == selected_category]["recipe_name"]
-        .dropna()
-        .drop_duplicates()
-        .sort_values()
-        .tolist()
-    )
-    dish_options = ["Select a dish"] + filtered_dishes
-    selected_dish = st.selectbox("Pick a dish", dish_options, index=0)
+    dishes = recipe_meta[recipe_meta["category"] == selected_category]["recipe_name"].drop_duplicates().sort_values()
+    dish_options = ["Select a dish"] + dishes.tolist()
+    selected_dish = st.selectbox("Pick a dish", dish_options)
 else:
-    st.selectbox("Pick a dish", ["Select a category first"], index=0, disabled=True)
+    st.selectbox("Pick a dish", ["Select category first"], disabled=True)
 
 # -----------------------------
-# Show nothing until both are selected
+# STOP UNTIL SELECTED
 # -----------------------------
 if selected_category == "Select a category" or selected_dish in [None, "Select a dish"]:
     st.stop()
 
 # -----------------------------
-# Match selected dish to recipe_code
+# MATCH + RECOMMEND
 # -----------------------------
-matches = recipe_meta[
-    (recipe_meta["recipe_name"].str.lower() == selected_dish.lower().strip()) &
+match = recipe_meta[
+    (recipe_meta["recipe_name"].str.lower() == selected_dish.lower()) &
     (recipe_meta["category"] == selected_category)
-].copy()
+]
 
-if matches.empty:
-    st.warning("This dish was not found in the main recipes dataset.")
+if match.empty:
+    st.warning("Dish not found.")
     st.stop()
 
-selected_code = matches.iloc[0]["recipe_code"]
-recs = recommend(selected_code, n=3)
-
-if recs.empty:
-    st.warning("No recommendations found.")
-    st.stop()
+code = match.iloc[0]["recipe_code"]
+recs = recommend(code)
 
 st.subheader(f"Top 3 recommendations for {selected_dish}")
-st.write(
-    "These recommendations are based on a hybrid model that combines text similarity, "
-    "category similarity, and engagement."
-)
 
-st.dataframe(recs, use_container_width=True)
+st.write("Recommendations based on hybrid similarity model.")
+
+st.dataframe(recs)
 
 # -----------------------------
-# Fixed-axis chart: 0 to 1
+# FIXED CHART (0–1)
 # -----------------------------
-chart = (
-    alt.Chart(recs)
-    .mark_bar()
-    .encode(
-        x=alt.X("recipe_name:N", sort="-y", title="Recommended Recipe"),
-        y=alt.Y("similarity_score:Q", scale=alt.Scale(domain=[0, 1]), title="Similarity Score"),
-        tooltip=["recipe_name", "category", "match_type", "similarity_score"]
-    )
-    .properties(height=350)
+chart = alt.Chart(recs).mark_bar().encode(
+    x=alt.X("recipe_name:N", sort="-y"),
+    y=alt.Y("similarity_score:Q", scale=alt.Scale(domain=[0,1]))
 )
 
 st.altair_chart(chart, use_container_width=True)
