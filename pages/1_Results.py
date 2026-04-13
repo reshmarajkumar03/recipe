@@ -8,11 +8,17 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 
 st.title("🍽️ Recipe Recommendation System")
-st.write("Select a category and a dish to see the top 3 recommendations.")
+st.write(
+    "Select a category and a dish to generate the top 3 recipe recommendations."
+)
 
+# -----------------------------
+# Load data
+# -----------------------------
 @st.cache_data
 def load_data():
     recipes = pd.read_csv("recipes.csv")
+
     recipes["category"] = recipes["category"].astype(str).str.lower().str.strip()
     recipes["recipe_name"] = recipes["recipe_name"].astype(str).str.strip()
     recipes["text"] = recipes["text"].fillna("")
@@ -25,14 +31,19 @@ def load_data():
 recipes = load_data()
 recipe_meta = recipes[["recipe_code", "recipe_name", "category"]].drop_duplicates()
 
+# -----------------------------
+# Helper settings
+# -----------------------------
 GENERIC_WORDS = [
-    "recipe","make","made","use","used","great","good","delicious","easy","really","just",
-    "like","love","loved","time","way","little","added","add","also","well","try","tried",
-    "family","everyone","taste","tasted","tastes","nice","got","did","came","turned",
-    "definitely","highly","recommend","perfect","wonderful","amazing","excellent",
-    "better","best","instead","sure","want","bit","lot","pretty","think","thought",
-    "minutes","minute","hour","hours","cup","cups","tablespoon","teaspoon",
-    "oven","pan","bowl","pot","dish"
+    "recipe", "make", "made", "use", "used", "great", "good", "delicious",
+    "easy", "really", "just", "like", "love", "loved", "time", "way",
+    "little", "added", "add", "also", "well", "try", "tried", "family",
+    "everyone", "taste", "tasted", "tastes", "nice", "got", "did",
+    "came", "turned", "definitely", "highly", "recommend", "perfect",
+    "wonderful", "amazing", "excellent", "better", "best", "instead",
+    "sure", "want", "bit", "lot", "pretty", "think", "thought",
+    "minutes", "minute", "hour", "hours", "cup", "cups", "tablespoon",
+    "teaspoon", "oven", "pan", "bowl", "pot", "dish"
 ]
 
 RELATED_CATEGORIES = {
@@ -57,8 +68,11 @@ def clean_text(text):
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
+# -----------------------------
+# Build recommender
+# -----------------------------
 @st.cache_data
-def build_recommender(df):
+def build_recommender(df, recipe_meta_df):
     recipe_text = (
         df.groupby("recipe_code")["text"]
         .apply(lambda x: " ".join(x))
@@ -108,7 +122,12 @@ def build_recommender(df):
     )
 
     common = text_sim_df.index.intersection(engagement_sim_df.index)
-    cat_series = recipe_meta.set_index("recipe_code")["category"].reindex(common).fillna("other")
+
+    cat_series = (
+        recipe_meta_df.set_index("recipe_code")["category"]
+        .reindex(common)
+        .fillna("other")
+    )
 
     n = len(common)
     cat_matrix = np.zeros((n, n))
@@ -130,19 +149,41 @@ def build_recommender(df):
 
     return hybrid
 
-hybrid_sim = build_recommender(recipes)
+hybrid_sim = build_recommender(recipes, recipe_meta)
 
-def recommend(code, n=3):
-    if code not in hybrid_sim.index:
+# -----------------------------
+# Recommendation function
+# -----------------------------
+def recommend(recipe_code, n=3):
+    if recipe_code not in hybrid_sim.index:
         return pd.DataFrame()
 
-    scores = hybrid_sim[code].drop(index=code)
+    scores = hybrid_sim[recipe_code].drop(index=recipe_code)
     top = scores.nlargest(n).reset_index()
     top.columns = ["recipe_code", "similarity_score"]
     top = top.merge(recipe_meta, on="recipe_code", how="left")
-    return top[["recipe_name", "category", "similarity_score"]]
 
-category_options = ["Select a category"] + sorted(recipe_meta["category"].dropna().unique().tolist())
+    seed_cat = recipe_meta.loc[
+        recipe_meta["recipe_code"] == recipe_code, "category"
+    ].values[0]
+
+    def label_match(row):
+        if row["category"] == seed_cat:
+            return "Same category"
+        elif row["category"] in RELATED_CATEGORIES.get(seed_cat, []):
+            return "Related category"
+        return "Different category"
+
+    top["match_type"] = top.apply(label_match, axis=1)
+
+    return top[["recipe_name", "category", "match_type", "similarity_score"]]
+
+# -----------------------------
+# User inputs
+# -----------------------------
+category_options = ["Select a category"] + sorted(
+    recipe_meta["category"].dropna().unique().tolist()
+)
 selected_category = st.selectbox("Pick a category", category_options, index=0)
 
 selected_dish = None
@@ -160,42 +201,79 @@ if selected_category != "Select a category":
 else:
     st.selectbox("Pick a dish", ["Select a category first"], index=0, disabled=True)
 
+# -----------------------------
+# Keep page blank until selection
+# -----------------------------
 if selected_category == "Select a category" or selected_dish in [None, "Select a dish"]:
     st.stop()
 
+# -----------------------------
+# Match selected dish to recipe_code
+# -----------------------------
 match = recipe_meta[
     (recipe_meta["recipe_name"].str.lower() == selected_dish.lower().strip()) &
     (recipe_meta["category"] == selected_category)
 ]
 
 if match.empty:
-    st.warning("Dish not found.")
+    st.warning("Dish not found in the dataset.")
     st.stop()
 
-code = match.iloc[0]["recipe_code"]
-recs = recommend(code, n=3)
+selected_code = match.iloc[0]["recipe_code"]
+recs = recommend(selected_code, n=3)
 
 if recs.empty:
     st.warning("No recommendations found.")
     st.stop()
 
+# -----------------------------
+# Results section
+# -----------------------------
+st.divider()
 st.subheader(f"Top 3 recommendations for {selected_dish}")
 
-selection_key = f"{selected_category}-{selected_dish}"
-if st.session_state.get("last_celebrated") != selection_key:
-    st.balloons()
-    st.session_state["last_celebrated"] = selection_key
+st.markdown(
+    "These recommendations come from a hybrid model that combines **text similarity**, "
+    "**category similarity**, and **engagement features**."
+)
 
-st.write("These recommendations are based on a hybrid similarity model.")
-st.dataframe(recs, use_container_width=True)
+# Make scores look cleaner
+display_recs = recs.copy()
+display_recs["similarity_score"] = display_recs["similarity_score"].round(3)
 
+# Summary cards
+for i, row in display_recs.reset_index(drop=True).iterrows():
+    st.markdown(
+        f"""
+**#{i+1} {row['recipe_name']}**  
+Category: {row['category'].title()}  
+Match type: {row['match_type']}  
+Similarity score: {row['similarity_score']}
+"""
+    )
+
+st.write("")
+st.dataframe(display_recs, use_container_width=True)
+
+# -----------------------------
+# Fixed-axis chart
+# -----------------------------
 chart = (
-    alt.Chart(recs)
-    .mark_bar()
+    alt.Chart(display_recs)
+    .mark_bar(cornerRadiusTopLeft=6, cornerRadiusTopRight=6)
     .encode(
         x=alt.X("recipe_name:N", sort="-y", title="Recommended Recipe"),
-        y=alt.Y("similarity_score:Q", scale=alt.Scale(domain=[0, 1]), title="Similarity Score"),
-        tooltip=["recipe_name", "category", "similarity_score"]
+        y=alt.Y(
+            "similarity_score:Q",
+            scale=alt.Scale(domain=[0, 1]),
+            title="Similarity Score"
+        ),
+        tooltip=[
+            alt.Tooltip("recipe_name:N", title="Recipe"),
+            alt.Tooltip("category:N", title="Category"),
+            alt.Tooltip("match_type:N", title="Match Type"),
+            alt.Tooltip("similarity_score:Q", title="Score")
+        ]
     )
     .properties(height=350)
 )
