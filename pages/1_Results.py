@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -12,9 +13,11 @@ st.write("Select a category and a dish to see the top 3 recommendations.")
 
 @st.cache_data
 def load_data():
-    recipes = pd.read_csv("recipes.csv")
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    recipes_path = os.path.join(base_dir, "recipes.csv")
 
-    # Remove extra index-like columns such as "Unnamed: 0"
+    recipes = pd.read_csv(recipes_path)
+
     recipes = recipes.loc[:, ~recipes.columns.str.contains("^Unnamed")]
 
     recipes["category"] = recipes["category"].astype(str).str.lower().str.strip()
