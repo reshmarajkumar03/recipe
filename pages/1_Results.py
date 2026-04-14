@@ -13,6 +13,10 @@ st.write("Select a category and a dish to see the top 3 recommendations.")
 @st.cache_data
 def load_data():
     recipes = pd.read_csv("recipes.csv")
+
+    # Remove extra index-like columns such as "Unnamed: 0"
+    recipes = recipes.loc[:, ~recipes.columns.str.contains("^Unnamed")]
+
     recipes["category"] = recipes["category"].astype(str).str.lower().str.strip()
     recipes["recipe_name"] = recipes["recipe_name"].astype(str).str.strip()
     recipes["text"] = recipes["text"].fillna("")
