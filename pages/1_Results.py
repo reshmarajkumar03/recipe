@@ -8,12 +8,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 
-st.title("🍽️ Recipe Recommendation System")
+st.title("🍽️ Recipe Recommendation Explorer")
 st.write("Select a category and a dish to see the top 3 recommendations.")
 
-# -----------------------------
 # LOAD DATA
-# -----------------------------
 @st.cache_data
 def load_data():
     base_dir = os.path.dirname(os.path.dirname(__file__))
@@ -49,9 +47,7 @@ def load_data():
 recipes = load_data()
 recipe_meta = recipes[["recipe_code", "recipe_name", "category"]].drop_duplicates()
 
-# -----------------------------
 # TEXT CLEANING
-# -----------------------------
 GENERIC_WORDS = [
     "recipe","make","made","use","used","great","good","delicious",
     "easy","really","just","like","love","loved","time","way",
@@ -86,9 +82,7 @@ def clean_text(text):
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-# -----------------------------
 # BUILD RECOMMENDER
-# -----------------------------
 @st.cache_data
 def build_recommender(df, recipe_meta_df):
 
@@ -153,9 +147,7 @@ def build_recommender(df, recipe_meta_df):
 
 hybrid_sim = build_recommender(recipes, recipe_meta)
 
-# -----------------------------
 # RECOMMEND FUNCTION
-# -----------------------------
 def recommend(code, n=3):
     scores = hybrid_sim[code].drop(index=code)
     top = scores.nlargest(n).reset_index()
@@ -178,9 +170,7 @@ def recommend(code, n=3):
 
     return top[["recipe_name","category","match_type","similarity_score"]]
 
-# -----------------------------
 # DROPDOWN WITH CAPITAL DISPLAY
-# -----------------------------
 categories = sorted(recipe_meta["category"].dropna().unique().tolist())
 category_display_map = {c.title(): c for c in categories}
 
@@ -191,9 +181,7 @@ selected_category = None
 if selected_category_display != "Select a category":
     selected_category = category_display_map[selected_category_display]
 
-# -----------------------------
 # DISH DROPDOWN
-# -----------------------------
 selected_dish = None
 
 if selected_category is not None:
@@ -203,15 +191,11 @@ if selected_category is not None:
 else:
     st.selectbox("Pick a dish", ["Select category first"], disabled=True)
 
-# -----------------------------
 # STOP UNTIL READY
-# -----------------------------
 if selected_category is None or selected_dish in [None, "Select a dish"]:
     st.stop()
 
-# -----------------------------
 # MATCH + RECOMMEND
-# -----------------------------
 match = recipe_meta[
     (recipe_meta["recipe_name"].str.lower() == selected_dish.lower()) &
     (recipe_meta["category"] == selected_category)
