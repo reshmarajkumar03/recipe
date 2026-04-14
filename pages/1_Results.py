@@ -16,7 +16,19 @@ def load_data():
     base_dir = os.path.dirname(os.path.dirname(__file__))
     recipes_path = os.path.join(base_dir, "recipes.csv")
 
-    recipes = pd.read_csv(recipes_path)
+    encodings_to_try = ["utf-8", "utf-8-sig", "latin1", "cp1252"]
+
+    recipes = None
+    for enc in encodings_to_try:
+        try:
+            recipes = pd.read_csv(recipes_path, encoding=enc)
+            break
+        except UnicodeDecodeError:
+            continue
+
+    if recipes is None:
+        st.error("Could not read recipes.csv because of an encoding issue.")
+        st.stop()
 
     recipes = recipes.loc[:, ~recipes.columns.str.contains("^Unnamed")]
 
@@ -168,16 +180,25 @@ def recommend(recipe_code, n=3):
 
     top["match_type"] = top.apply(label_match, axis=1)
 
+    # Make displayed category capitalized
+    top["category"] = top["category"].str.title()
+
     return top[["recipe_name", "category", "match_type", "similarity_score"]]
 
-category_options = ["Select a category"] + sorted(
-    recipe_meta["category"].dropna().unique().tolist()
-)
-selected_category = st.selectbox("Pick a category", category_options, index=0)
+# Build pretty category dropdown labels
+categories = sorted(recipe_meta["category"].dropna().unique().tolist())
+category_display_map = {c.title(): c for c in categories}
+
+category_options = ["Select a category"] + list(category_display_map.keys())
+selected_category_display = st.selectbox("Pick a category", category_options, index=0)
+
+selected_category = None
+if selected_category_display != "Select a category":
+    selected_category = category_display_map[selected_category_display]
 
 selected_dish = None
 
-if selected_category != "Select a category":
+if selected_category is not None:
     dishes = (
         recipe_meta[recipe_meta["category"] == selected_category]["recipe_name"]
         .dropna()
@@ -190,7 +211,7 @@ if selected_category != "Select a category":
 else:
     st.selectbox("Pick a dish", ["Select a category first"], index=0, disabled=True)
 
-if selected_category == "Select a category" or selected_dish in [None, "Select a dish"]:
+if selected_category is None or selected_dish in [None, "Select a dish"]:
     st.stop()
 
 match = recipe_meta[
