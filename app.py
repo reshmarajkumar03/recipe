@@ -1,8 +1,14 @@
 import streamlit as st
+from PIL import Image
+
+def load_fixed_height(path, height=300):
+    img = Image.open(path)
+    ratio = height / img.height
+    new_width = int(img.width * ratio)
+    return img.resize((new_width, height), Image.LANCZOS)
 
 st.title("Project Details")
 st.subheader("Using Machine Learning to Classify Sentiment, Predict Ratings, and Recommend Recipes")
-
 st.write(
     """
     This project uses review text and user interaction data to study recipe preferences.
@@ -11,30 +17,27 @@ st.write(
     regression model for rating prediction.
     """
 )
-
 st.divider()
-
-col1, col2, col3 = st.columns(3)
 
 st.header("Methods Overview")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.image("cnn.png", use_container_width=True)
+    st.image(load_fixed_height("cnn.png"), use_container_width=True)
     st.markdown("**Text CNN**")
     st.write("Sentiment classification from review text")
 
 with col2:
-    st.image("collab.png", use_container_width=True)
+    st.image(load_fixed_height("collab.png"), use_container_width=True)
     st.markdown("**Collaborative Filtering**")
     st.write("Hybrid similarity-based recommendations")
 
 with col3:
-    st.image("bayes.png", use_container_width=True)
+    st.image(load_fixed_height("bayes.png"), use_container_width=True)
     st.markdown("**Bayesian Regression**")
     st.write("Predicting user ratings")
-st.subheader("Method Summaries")
 
+st.subheader("Method Summaries")
 st.markdown(
     """
     **Text CNN**
@@ -56,7 +59,5 @@ st.markdown(
     - Demonstrated the value of combining structured interaction data with text-based sentiment features
     """
 )
-
 st.divider()
-
 st.write("Use the Results page to explore the interactive recommendation system.")
