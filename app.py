@@ -1,77 +1,64 @@
 import streamlit as st
 
-st.title("Recipe Recommendation System")
+st.title("Project Details")
+st.subheader("Using Machine Learning to Classify Sentiment, Predict Ratings, and Recommend Recipes")
 
-st.write("An interactive application that recommends recipes using a hybrid similarity model.")
+st.write(
+    """
+    This project uses review text and user interaction data to study recipe preferences.
+    We apply three machine learning methods: a Text CNN for sentiment classification,
+    a hybrid collaborative filtering model for recipe recommendation, and a Bayesian
+    regression model for rating prediction.
+    """
+)
 
-# -----------------------------
-# About
-# -----------------------------
-st.header("About This Project")
+st.divider()
 
-st.write("""
-Online recipe platforms provide access to a large number of dishes, making it easier to explore new meals but also more difficult to decide what to cook. 
-This project addresses that problem by building a recommendation system that suggests similar recipes based on content, category, and user engagement.
+st.header("Methods Overview")
 
-The goal is to generate meaningful and relevant recommendations even when user interaction data is limited.
-""")
+col1, col2, col3 = st.columns(3)
 
-# -----------------------------
-# Data
-# -----------------------------
-st.header("Data")
+with col1:
+    st.image("cnn.png", use_container_width=True)
+    st.markdown("**Text CNN**")
+    st.caption("Sentiment classification from review text")
 
-st.write("""
-The dataset used is the Recipe Reviews and User Feedback Dataset from the UCI Machine Learning Repository. 
-It contains recipe information, user reviews, ratings, and engagement metrics such as likes and reply counts.
+with col2:
+    st.image("collab.png", use_container_width=True)
+    st.markdown("**Collaborative Filtering**")
+    st.caption("Hybrid similarity-based recommendations")
 
-Additional preprocessing steps were performed, including:
-- Cleaning recipe text and removing noise
-- Converting relevant columns to numeric format
-- Creating a category column to improve structure and avoid incorrect groupings
-""")
+with col3:
+    st.image("bayes.png", use_container_width=True)
+    st.markdown("**Bayesian Regression**")
+    st.caption("Predicting user ratings")
 
-# -----------------------------
-# Method
-# -----------------------------
-st.header("Method")
+st.divider()
 
-st.write("""
-A hybrid recommendation approach was used instead of relying on a single method. 
-Three types of similarity were combined:
+st.subheader("Method Summaries")
 
-- **Text similarity (70%)**: Computed using TF-IDF to capture similarities in ingredients and descriptions
-- **Category similarity (20%)**: Provides a boost for recipes in the same or related categories
-- **Engagement similarity (10%)**: Based on user interactions such as likes and ratings
+st.markdown(
+    """
+    **Text CNN**
+    - Achieved approximately 80% accuracy in sentiment classification
+    - Performed especially well on positive reviews, with strong precision and F1-scores
+    - Captured useful sentiment patterns from review text for downstream recommendation tasks
+    - Performance was lower for neutral and negative reviews because of class imbalance and ambiguity
 
-These components were combined into a final similarity matrix (`hybrid_sim`), allowing the model to balance content relevance with contextual and behavioral signals.
-""")
+    **Collaborative Filtering**
+    - The initial item-item model performed poorly because user interaction data were sparse
+    - The hybrid model produced higher and more meaningful similarity scores
+    - Recommendations were more accurate and consistently grouped similar recipes
+    - The model achieved a better balance between relevance and diversity
 
-# -----------------------------
-# Results Preview
-# -----------------------------
-st.header("Results Preview")
+    **Bayesian Regression**
+    - Achieved moderate predictive performance with RMSE = 1.27, MAE = 0.94, and R² = 0.36
+    - Learned meaningful patterns in how users rate recipes
+    - CNN-derived sentiment features improved predictions beyond engagement metrics alone
+    - Demonstrated the value of combining structured interaction data with text-based sentiment features
+    """
+)
 
-st.write("""
-The similarity score distribution demonstrates how each component behaves. 
-Text similarity produces mostly low values, showing strong differentiation between recipes, while engagement similarity is concentrated at higher values and is less discriminative. 
-The hybrid similarity shows a more balanced spread, indicating a good mix of the components.
+st.divider()
 
-This confirms that the weighting allows text to drive similarity, while category and engagement provide supporting influence, resulting in more meaningful recommendations.
-""")
-
-# -----------------------------
-# Charts
-# -----------------------------
-st.subheader("Visualizations")
-
-st.write("Similarity Score Distribution:")
-st.image("similarity_chart.png")  # replace with your actual file name
-
-st.write("Second Chart:")
-st.image("second_chart.png")  # replace with your second chart
-
-# -----------------------------
-# Navigation note
-# -----------------------------
-st.info("Go to the Results page from the sidebar to explore recommendations.")
+st.write("Use the Results page to explore the interactive recommendation system.")
