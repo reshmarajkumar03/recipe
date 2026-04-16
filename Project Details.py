@@ -87,4 +87,4 @@ st.markdown(
 )
 
 st.divider()
-st.write("Use the Results page to explore the interactive recommendation system.")
+st.write("Use the Results Explorer page to experience the interactive recommendation system.")
