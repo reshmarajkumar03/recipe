@@ -33,32 +33,36 @@ slides = [
 current = st.session_state.carousel_index
 slide = slides[current]
 
-# Image centered
-img_col = st.columns([1, 6, 1])[1]
-with img_col:
-    st.image(load_fixed_height(slide["image"], height=500), use_container_width=True)
-    st.markdown(f"### {slide['title']}")
-    st.write(slide["desc"])
+# Title right under header
+st.markdown(f"### {slide['title']}")
+st.write(slide["desc"])
 
-# Arrows centered inline with dots
-left, mid, right = st.columns([1, 4, 1])
+# Arrows on sides of image
+left, mid, right = st.columns([1, 10, 1])
 with left:
+    st.write("")
+    st.write("")
     if st.button("◀", use_container_width=True):
         st.session_state.carousel_index = (current - 1) % len(slides)
         st.rerun()
 with mid:
-    dots_html = "".join([
-        f"<span style='font-size:10px; margin:0 3px; color:{'#555' if i == current else '#ccc'}'>●</span>"
-        for i in range(len(slides))
-    ])
-    st.markdown(
-        f"<div style='text-align:center; padding-top:6px'>{dots_html}</div>",
-        unsafe_allow_html=True
-    )
+    st.image(load_fixed_height(slide["image"], height=500), use_container_width=True)
 with right:
+    st.write("")
+    st.write("")
     if st.button("▶", use_container_width=True):
         st.session_state.carousel_index = (current + 1) % len(slides)
         st.rerun()
+
+# Small dots centered below
+dots_html = "".join([
+    f"<span style='font-size:10px; margin:0 3px; color:{'#555' if i == current else '#ccc'}'>●</span>"
+    for i in range(len(slides))
+])
+st.markdown(
+    f"<div style='text-align:center; padding-top:4px'>{dots_html}</div>",
+    unsafe_allow_html=True
+)
 
 st.subheader("Method Summaries")
 st.markdown(
