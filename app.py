@@ -22,6 +22,7 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.image("cnn.png")
+    st.write("")  # spacing fix
     st.markdown("**Text CNN**")
     st.write("Sentiment classification from review text")
 
