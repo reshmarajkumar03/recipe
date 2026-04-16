@@ -21,54 +21,44 @@ st.divider()
 
 st.header("Methods Overview")
 
-# Carousel state
 if "carousel_index" not in st.session_state:
     st.session_state.carousel_index = 0
 
 slides = [
-    {
-        "image": "cnn.png",
-        "title": "Text CNN",
-        "desc": "Sentiment classification from review text"
-    },
-    {
-        "image": "collab.png",
-        "title": "Collaborative Filtering",
-        "desc": "Hybrid similarity-based recommendations"
-    },
-    {
-        "image": "bayes.png",
-        "title": "Bayesian Regression",
-        "desc": "Predicting user ratings"
-    },
+    {"image": "cnn.png", "title": "Text CNN", "desc": "Sentiment classification from review text"},
+    {"image": "collab.png", "title": "Collaborative Filtering", "desc": "Hybrid similarity-based recommendations"},
+    {"image": "bayes.png", "title": "Bayesian Regression", "desc": "Predicting user ratings"},
 ]
 
 current = st.session_state.carousel_index
+slide = slides[current]
 
-# Navigation buttons
-prev_col, _, next_col = st.columns([1, 8, 1])
-with prev_col:
-    if st.button("◀", use_container_width=True):
-        st.session_state.carousel_index = (current - 1) % len(slides)
-        st.rerun()
-with next_col:
-    if st.button("▶", use_container_width=True):
-        st.session_state.carousel_index = (current + 1) % len(slides)
-        st.rerun()
-
-# Display current slide
-slide = slides[st.session_state.carousel_index]
+# Image centered
 img_col = st.columns([1, 6, 1])[1]
 with img_col:
     st.image(load_fixed_height(slide["image"], height=500), use_container_width=True)
     st.markdown(f"### {slide['title']}")
     st.write(slide["desc"])
 
-# Dot indicators
-dots = "  ".join(
-    ["🔵" if i == st.session_state.carousel_index else "⚪" for i in range(len(slides))]
-)
-st.markdown(f"<div style='text-align:center; font-size:20px'>{dots}</div>", unsafe_allow_html=True)
+# Arrows centered inline with dots
+left, mid, right = st.columns([1, 4, 1])
+with left:
+    if st.button("◀", use_container_width=True):
+        st.session_state.carousel_index = (current - 1) % len(slides)
+        st.rerun()
+with mid:
+    dots_html = "".join([
+        f"<span style='font-size:10px; margin:0 3px; color:{'#555' if i == current else '#ccc'}'>●</span>"
+        for i in range(len(slides))
+    ])
+    st.markdown(
+        f"<div style='text-align:center; padding-top:6px'>{dots_html}</div>",
+        unsafe_allow_html=True
+    )
+with right:
+    if st.button("▶", use_container_width=True):
+        st.session_state.carousel_index = (current + 1) % len(slides)
+        st.rerun()
 
 st.subheader("Method Summaries")
 st.markdown(
