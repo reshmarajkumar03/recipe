@@ -14,26 +14,26 @@ st.write(
 
 st.divider()
 
+col1, col2, col3 = st.columns(3)
+
 st.header("Methods Overview")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.image("cnn.png", use_container_width=True)
-    st.markdown("### Text CNN")
-    st.caption("Sentiment classification from review text")
+    st.image("cnn.png")
+    st.markdown("**Text CNN**")
+    st.write("Sentiment classification from review text")
 
 with col2:
-    st.image("collab.png", use_container_width=True)
-    st.markdown("### Collaborative Filtering")
-    st.caption("Hybrid similarity-based recommendations")
+    st.image("collab.png")
+    st.markdown("**Collaborative Filtering**")
+    st.write("Hybrid similarity-based recommendations")
 
 with col3:
-    st.image("bayes.png", use_container_width=True)
-    st.markdown("### Bayesian Regression")
-    st.caption("Predicting user ratings")
-
-st.divider()
+    st.image("bayes.png")
+    st.markdown("**Bayesian Regression**")
+    st.write("Predicting user ratings")
 
 st.subheader("Method Summaries")
 
