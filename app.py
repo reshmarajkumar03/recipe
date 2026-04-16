@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
 
-def load_fixed_height(path, height=300):
+def load_fixed_height(path, height=500):
     img = Image.open(path)
     ratio = height / img.height
     new_width = int(img.width * ratio)
@@ -20,22 +20,55 @@ st.write(
 st.divider()
 
 st.header("Methods Overview")
-col1, col2, col3 = st.columns(3)
 
-with col1:
-    st.image(load_fixed_height("cnn.png"), use_container_width=True)
-    st.markdown("**Text CNN**")
-    st.write("Sentiment classification from review text")
+# Carousel state
+if "carousel_index" not in st.session_state:
+    st.session_state.carousel_index = 0
 
-with col2:
-    st.image(load_fixed_height("collab.png"), use_container_width=True)
-    st.markdown("**Collaborative Filtering**")
-    st.write("Hybrid similarity-based recommendations")
+slides = [
+    {
+        "image": "cnn.png",
+        "title": "Text CNN",
+        "desc": "Sentiment classification from review text"
+    },
+    {
+        "image": "collab.png",
+        "title": "Collaborative Filtering",
+        "desc": "Hybrid similarity-based recommendations"
+    },
+    {
+        "image": "bayes.png",
+        "title": "Bayesian Regression",
+        "desc": "Predicting user ratings"
+    },
+]
 
-with col3:
-    st.image(load_fixed_height("bayes.png"), use_container_width=True)
-    st.markdown("**Bayesian Regression**")
-    st.write("Predicting user ratings")
+current = st.session_state.carousel_index
+
+# Navigation buttons
+prev_col, _, next_col = st.columns([1, 8, 1])
+with prev_col:
+    if st.button("◀", use_container_width=True):
+        st.session_state.carousel_index = (current - 1) % len(slides)
+        st.rerun()
+with next_col:
+    if st.button("▶", use_container_width=True):
+        st.session_state.carousel_index = (current + 1) % len(slides)
+        st.rerun()
+
+# Display current slide
+slide = slides[st.session_state.carousel_index]
+img_col = st.columns([1, 6, 1])[1]
+with img_col:
+    st.image(load_fixed_height(slide["image"], height=500), use_container_width=True)
+    st.markdown(f"### {slide['title']}")
+    st.write(slide["desc"])
+
+# Dot indicators
+dots = "  ".join(
+    ["🔵" if i == st.session_state.carousel_index else "⚪" for i in range(len(slides))]
+)
+st.markdown(f"<div style='text-align:center; font-size:20px'>{dots}</div>", unsafe_allow_html=True)
 
 st.subheader("Method Summaries")
 st.markdown(
