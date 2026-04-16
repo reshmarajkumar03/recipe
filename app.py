@@ -20,17 +20,17 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.image("cnn.png", use_container_width=True)
-    st.markdown("**Text CNN**")
+    st.markdown("### Text CNN")
     st.caption("Sentiment classification from review text")
 
 with col2:
     st.image("collab.png", use_container_width=True)
-    st.markdown("**Collaborative Filtering**")
+    st.markdown("### Collaborative Filtering")
     st.caption("Hybrid similarity-based recommendations")
 
 with col3:
     st.image("bayes.png", use_container_width=True)
-    st.markdown("**Bayesian Regression**")
+    st.markdown("### Bayesian Regression")
     st.caption("Predicting user ratings")
 
 st.divider()
