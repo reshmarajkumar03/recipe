@@ -35,11 +35,9 @@ slides = [
 current = st.session_state.carousel_index
 slide = slides[current]
 
-# Title right under header
 st.markdown(f"### {slide['title']}")
 st.write(slide["desc"])
 
-# Arrows on sides of image
 left, mid, right = st.columns([1, 10, 1])
 with left:
     st.write("")
@@ -56,7 +54,6 @@ with right:
         st.session_state.carousel_index = (current + 1) % len(slides)
         st.rerun()
 
-# Small dots centered below
 dots_html = "".join([
     f"<span style='font-size:10px; margin:0 3px; color:{'#555' if i == current else '#ccc'}'>●</span>"
     for i in range(len(slides))
