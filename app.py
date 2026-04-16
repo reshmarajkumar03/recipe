@@ -18,22 +18,25 @@ col1, col2, col3 = st.columns(3)
 
 st.header("Methods Overview")
 
+col1, col2, col3 = st.columns(3)
+
+# COLUMN 1 (keep same)
 with col1:
     st.image("cnn.png")
     st.markdown("**Text CNN**")
     st.write("Sentiment classification from review text")
 
+# COLUMN 2 (slightly bigger + align)
 with col2:
-    st.image("collab.png")
-    st.write("")  
-    st.write("")  
+    st.image("collab.png", width=420)
+    st.write("")
     st.markdown("**Collaborative Filtering**")
     st.write("Hybrid similarity-based recommendations")
 
+# COLUMN 3 (slightly bigger + align)
 with col3:
-    st.image("bayes.png")
-    st.write("")  
-    st.write("")  
+    st.image("bayes.png", width=420)
+    st.write("")
     st.markdown("**Bayesian Regression**")
     st.write("Predicting user ratings")
 
